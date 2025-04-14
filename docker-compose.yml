@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  autoservice-app:
+    build: .
+    container_name: autoservice-app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./autoservice.db:/app/autoservice.db
+    restart: unless-stopped
