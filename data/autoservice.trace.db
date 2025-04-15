@@ -1,0 +1,3 @@
+2025-04-14 17:44:52 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "INSERT INTO roles (name) VALUES ('ROLE_USER') [*]ON DUPLICATE KEY UPDATE name = VALUES(name)"; SQL statement:
+INSERT INTO roles (name) VALUES ('ROLE_USER') ON DUPLICATE KEY UPDATE name = VALUES(name) [42000-214]

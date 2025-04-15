@@ -7,5 +7,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./autoservice.db:/app/autoservice.db
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_TOOL_OPTIONS=-Xmx512m
     restart: unless-stopped

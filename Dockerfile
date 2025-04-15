@@ -1,12 +1,20 @@
-FROM maven:3.8.6-openjdk-17 AS build
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
 WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
+COPY pom.xml .
+RUN mvn dependency:resolve
 
-FROM openjdk:17-jdk-slim
+COPY src ./src
+RUN mvn package -DskipTests
+
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/autoservice-web-0.0.1-SNAPSHOT.jar app.jar
-COPY autoservice.db /app/autoservice.db
+COPY --from=builder /app/target/*.jar app.jar
+
+# Создаем директорию для данных и логов
+RUN mkdir -p /app/data /app/logs
+VOLUME ["/app/data", "/app/logs"]
 
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Запускаем с указанным профилем Docker
+ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=docker", "app.jar"]

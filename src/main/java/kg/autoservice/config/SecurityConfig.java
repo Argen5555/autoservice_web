@@ -15,24 +15,28 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.util.Arrays;
+import javax.servlet.FilterChain;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(
-        prePostEnabled = true, // Включаем аннотации @PreAuthorize
-        securedEnabled = true, // Включаем аннотации @Secured
-        jsr250Enabled = true   // Включаем аннотации @RolesAllowed
+        prePostEnabled = true,
+        securedEnabled = true,
+        jsr250Enabled = true
 )
 @RequiredArgsConstructor
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CorsFilter corsFilter;
 
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
@@ -42,23 +46,48 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .cors().and()
+                .addFilterBefore(corsFilter, UsernamePasswordAuthenticationFilter.class)
                 .csrf().disable()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
-                // Публичные URL, доступные без авторизации
-                .antMatchers("/api/auth/**").permitAll()
-                .antMatchers("/api/services/**").permitAll()
-                .antMatchers("/api/reviews/approved").permitAll()
+                // Сначала открытые эндпоинты
+                // Аутентификация и регистрация (обязательно в начале!)
+                .antMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .antMatchers("/auth/login", "/auth/register").permitAll()
+
+                // Swagger UI доступ
+                .antMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                        "/swagger-resources/**", "/webjars/**", "/h2-console/**").permitAll()
+
+                // Другие публичные URL
+                .antMatchers("/api/services/**", "/services/**").permitAll()
+                .antMatchers("/api/reviews/approved", "/reviews/approved").permitAll()
                 .antMatchers("/static/**").permitAll()
-                .antMatchers("/", "/about", "/services", "/prices", "/reviews", "/contacts").permitAll()
+
                 // URL, требующие авторизации
-                .antMatchers("/api/admin/**").hasRole("ADMIN")
+                .antMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
+
+                // Все остальные запросы требуют аутентификации
                 .anyRequest().authenticated();
+
+        // Разрешаем работу с фреймами для H2 Console
+        http.headers().frameOptions().sameOrigin();
 
         // Добавляем JWT фильтр перед стандартным фильтром аутентификации
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // Включаем подробное логирование запросов (это для отладки)
+        http.httpBasic().and().addFilterBefore(new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                    throws ServletException, IOException {
+                logger.debug("Processing request to URI: " + request.getRequestURI());
+                filterChain.doFilter(request, response);
+            }
+        }, UsernamePasswordAuthenticationFilter.class);
+
+
     }
 
     @Bean
@@ -72,16 +101,5 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         return new BCryptPasswordEncoder();
     }
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*")); // Для разработки можно использовать "*", для продакшена лучше указать конкретные домены
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+    // Убираем метод corsConfigurationSource
 }

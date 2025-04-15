@@ -1,8 +1,6 @@
 package kg.autoservice.config;
 
-
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -29,15 +27,5 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addViewController("/login").setViewName("login");
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        // Настройка CORS для разработки
-        registry.addMapping("/**")
-                .allowedOrigins("*") // В продакшене замените на конкретный домен
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("Origin", "Content-Type", "Accept", "Authorization")
-                .exposedHeaders("Authorization")
-                .allowCredentials(true)
-                .maxAge(3600); // 1 час
-    }
+    // Убираем метод addCorsMappings - будем использовать только CorsConfig
 }
